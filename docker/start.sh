@@ -15,4 +15,7 @@ php artisan view:cache 2>/dev/null || true
 
 # Start nginx (background) then php-fpm (foreground)
 nginx
-exec php-fpm -F
+# Find php-fpm binary
+FPM=$(find /usr/sbin /usr/bin -name "php-fpm*" -type f 2>/dev/null | head -1)
+[ -n "$FPM" ] && exec "$FPM" --nodaemonize
+exec php-fpm --nodaemonize
