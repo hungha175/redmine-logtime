@@ -6,10 +6,10 @@ cd /var/www/html
 # Render uses PORT env - update nginx config
 sed -i "s/listen 80;/listen ${PORT:-80};/" /etc/nginx/conf.d/default.conf
 
-# Ensure storage dirs exist
+# Ensure storage dirs exist (nginx user for wyveo)
 mkdir -p storage/framework/{cache,sessions,views,temp} storage/logs
+chown -R nginx:nginx storage bootstrap/cache 2>/dev/null || true
 
-# Fix tempnam(): use writable storage
 export TMPDIR=/var/www/html/storage/framework/temp
 
 php artisan config:cache
