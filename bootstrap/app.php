@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
         $middleware->web(prepend: [\App\Http\Middleware\SanitizeApiKey::class], append: [SecurityHeaders::class]);
         $middleware->alias(['app_basic_auth' => AppBasicAuth::class]);
     })
