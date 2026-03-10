@@ -7,7 +7,10 @@ cd /var/www/html
 sed -i "s/listen 80;/listen ${PORT:-80};/" /etc/nginx/conf.d/default.conf
 
 # Ensure storage dirs exist
-mkdir -p storage/framework/{cache,sessions,views} storage/logs
+mkdir -p storage/framework/{cache,sessions,views,temp} storage/logs
+
+# Fix tempnam(): use writable storage
+export TMPDIR=/var/www/html/storage/framework/temp
 
 php artisan config:cache
 php artisan route:cache
