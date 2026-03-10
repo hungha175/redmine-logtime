@@ -13,5 +13,6 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache 2>/dev/null || true
 
-# Wyveo image uses supervisord
-exec /usr/bin/supervisord -n
+# Start nginx (background) then php-fpm (foreground)
+nginx
+exec php-fpm -F
