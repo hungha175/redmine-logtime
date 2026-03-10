@@ -280,10 +280,16 @@ class RedmineService
         return null;
     }
 
-    public function fetchIssuesByScraping(int $page = 1, int $perPage = 25): array
+    public function fetchIssuesByScraping(int $page = 1, int $perPage = 25, string $filter = 'assignee'): array
     {
         $issues = [];
-        $url = '/issues?assigned_to_id=me&set_filter=1&status_id=o&per_page=' . max(1, $perPage) . '&page=' . max(1, $page);
+        $filterParam = match ($filter) {
+            'author' => 'author_id=me',
+            'qc_name' => config('redmine.filter_qc_cf_id', 0) > 0 ? 'cf_' . config('redmine.filter_qc_cf_id') . '=me' : 'assigned_to_id=me',
+            'co_assignee' => config('redmine.filter_coassignee_cf_id', 0) > 0 ? 'cf_' . config('redmine.filter_coassignee_cf_id') . '=me' : 'assigned_to_id=me',
+            default => 'assigned_to_id=me',
+        };
+        $url = '/issues?' . $filterParam . '&set_filter=1&status_id=o&per_page=' . max(1, $perPage) . '&page=' . max(1, $page);
 
         $html = $this->ensureLoggedAndGet($url);
         if ($html === false || trim($html) === '') {
@@ -370,6 +376,87 @@ class RedmineService
         session(['spent_cache_version' => (session('spent_cache_version', 0) + 1)]);
     }
 
+    /** Daily bar: tổng giờ của user, không phụ thuộc filter ticket. */
+    public function fetchMySpentHoursForUser(): array
+    {
+        $version = session('spent_cache_version', 0);
+        $cacheKey = 'redmine_spent_user_' . session()->getId() . '_v' . $version;
+        $ttl = config('redmine.cache_ttl_spent', 60);
+        return Cache::remember($cacheKey, $ttl, fn () => $this->getApiKey() !== ''
+            ? $this->fetchMySpentHoursForUserByApi()
+            : $this->fetchMySpentHoursForUserByScraping());
+    }
+
+    protected function fetchMySpentHoursForUserByApi(): array
+    {
+        $today = 0.0;
+        $byDay = [];
+        $todayStr = date('Y-m-d');
+        $limit = 250;
+        $offset = 0;
+        while (true) {
+            $data = $this->requestApi('GET', "/time_entries.json?user_id=me&limit={$limit}&offset={$offset}");
+            $entries = ($data ?? [])['time_entries'] ?? [];
+            if (empty($entries)) {
+                break;
+            }
+            foreach ($entries as $e) {
+                $val = (float) ($e['hours'] ?? 0);
+                $spentOn = $e['spent_on'] ?? null;
+                $today += $spentOn === $todayStr ? $val : 0;
+                if ($spentOn) {
+                    $byDay[$spentOn] = ($byDay[$spentOn] ?? 0) + $val;
+                }
+            }
+            if (count($entries) < $limit || $offset >= 5000) {
+                break;
+            }
+            $offset += $limit;
+        }
+        return ['today' => $today, 'by_day' => $byDay];
+    }
+
+    protected function fetchMySpentHoursForUserByScraping(): array
+    {
+        $today = 0.0;
+        $byDay = [];
+        $todayStr = date('Y-m-d');
+        $page = 1;
+        $perPage = 100;
+        while (true) {
+            $html = $this->ensureLoggedAndGet('/time_entries?user_id=me&set_filter=1&per_page=' . $perPage . '&page=' . $page);
+            if ($html === false || trim($html) === '') {
+                break;
+            }
+            $rowCount = 0;
+            if (preg_match_all('/<tr[^>]*>([\s\S]*?)<\/tr>/i', $html, $rows, PREG_SET_ORDER)) {
+                foreach ($rows as $row) {
+                    $rowHtml = $row[1];
+                    if (!preg_match('/<td[^>]*class="hours"[^>]*>\s*([\d\.,]+)\s*<\/td>/i', $rowHtml, $mHours)) {
+                        continue;
+                    }
+                    $rowCount++;
+                    $val = floatval(str_replace(',', '.', preg_replace('/[^\d\.,]/', '', $mHours[1])));
+                    $spentOn = null;
+                    if (preg_match('/<td[^>]*class="spent_on"[^>]*>[\s\S]*?(\d{4}-\d{2}-\d{2})[\s\S]*?<\/td>/i', $rowHtml, $mDate)) {
+                        $spentOn = $mDate[1];
+                    } elseif (preg_match('/<td[^>]*class="spent_on"[^>]*>[\s\S]*?(\d{1,2})\/(\d{1,2})\/(\d{4})[\s\S]*?<\/td>/i', $rowHtml, $mDate)) {
+                        $spentOn = sprintf('%04d-%02d-%02d', (int) $mDate[3], (int) $mDate[2], (int) $mDate[1]);
+                    }
+                    if ($spentOn) {
+                        $today += $spentOn === $todayStr ? $val : 0;
+                        $byDay[$spentOn] = ($byDay[$spentOn] ?? 0) + $val;
+                    }
+                }
+            }
+            if ($rowCount < $perPage || $page >= 200) {
+                break;
+            }
+            $page++;
+        }
+        return ['today' => $today, 'by_day' => $byDay];
+    }
+
     protected function fetchMySpentHoursByApi(array $issueIds): array
     {
         $issueIdSet = array_fill_keys(array_map('intval', $issueIds), true);
@@ -393,15 +480,16 @@ class RedmineService
                 $spentOn = $e['spent_on'] ?? null;
                 $issueId = isset($e['issue']['id']) ? (int) $e['issue']['id'] : null;
 
+                if (!$issueId || !isset($issueIdSet[$issueId])) {
+                    continue;
+                }
                 $total += $val;
+                $map[$issueId] = ($map[$issueId] ?? 0) + $val;
                 if ($spentOn) {
                     if ($spentOn === $todayStr) {
                         $today += $val;
                     }
                     $byDay[$spentOn] = ($byDay[$spentOn] ?? 0) + $val;
-                }
-                if ($issueId && isset($issueIdSet[$issueId])) {
-                    $map[$issueId] = ($map[$issueId] ?? 0) + $val;
                 }
             }
 
@@ -438,9 +526,17 @@ class RedmineService
                     if (!preg_match('/<td[^>]*class="hours"[^>]*>\s*([\d\.,]+)\s*<\/td>/i', $rowHtml, $mHours)) {
                         continue;
                     }
+                    $issueId = null;
+                    if (preg_match('/href="[^"]*\/issues\/(\d+)"/i', $rowHtml, $mIssue)) {
+                        $issueId = (int) $mIssue[1];
+                    }
+                    if (!$issueId || !isset($issueIdSet[$issueId])) {
+                        continue;
+                    }
                     $rowCount++;
                     $val = floatval(str_replace(',', '.', preg_replace('/[^\d\.,]/', '', $mHours[1])));
                     $total += $val;
+                    $map[$issueId] = ($map[$issueId] ?? 0) + $val;
 
                     $spentOn = null;
                     if (preg_match('/<td[^>]*class="spent_on"[^>]*>[\s\S]*?(\d{4}-\d{2}-\d{2})[\s\S]*?<\/td>/i', $rowHtml, $mDate)) {
@@ -453,13 +549,6 @@ class RedmineService
                             $today += $val;
                         }
                         $byDay[$spentOn] = ($byDay[$spentOn] ?? 0) + $val;
-                    }
-
-                    if (preg_match('/href="[^"]*\/issues\/(\d+)"/i', $rowHtml, $mIssue)) {
-                        $issueId = (int) $mIssue[1];
-                        if (isset($issueIdSet[$issueId])) {
-                            $map[$issueId] = ($map[$issueId] ?? 0) + $val;
-                        }
                     }
                 }
             }
@@ -475,20 +564,28 @@ class RedmineService
 
     public function getIssuesAndActivities(): array
     {
+        $filter = request()->get('filter', 'assignee');
+        $validFilters = ['assignee', 'author', 'qc_name', 'co_assignee'];
+        if (!in_array($filter, $validFilters, true)) {
+            $filter = 'assignee';
+        }
+
         if ($this->getApiKey() !== '') {
-            return Cache::remember('redmine_issues_activities_api', config('redmine.cache_ttl_issues', 120), fn () => $this->fetchIssuesAndActivitiesByApi());
+            $cacheKey = 'redmine_issues_activities_api_' . $filter;
+            $result = Cache::remember($cacheKey, config('redmine.cache_ttl_issues', 120), fn () => $this->fetchIssuesAndActivitiesByApi($filter));
+            return array_merge($result, ['ticket_page' => 1, 'per_page' => 25, 'filter' => $filter]);
         }
 
         $hasCreds = !empty(session('rm_username')) && !empty(session('rm_password'));
         if (!$hasCreds) {
-            return ['issues' => [], 'activities' => [], 'total_pages' => 1];
+            return ['issues' => [], 'activities' => [], 'total_pages' => 1, 'filter' => $filter];
         }
 
         $ticketPage = max(1, (int) request()->get('p', 1));
         $perPage = 25;
-        $cacheKey = 'redmine_scrape_' . session()->getId() . '_p' . $ticketPage;
-        $result = Cache::remember($cacheKey, config('redmine.cache_ttl_issues', 120), function () use ($ticketPage, $perPage) {
-            $issues = $this->fetchIssuesByScraping($ticketPage, $perPage);
+        $cacheKey = 'redmine_scrape_' . session()->getId() . '_p' . $ticketPage . '_' . $filter;
+        $result = Cache::remember($cacheKey, config('redmine.cache_ttl_issues', 120), function () use ($ticketPage, $perPage, $filter) {
+            $issues = $this->fetchIssuesByScraping($ticketPage, $perPage, $filter);
             $activities = $this->fetchActivitiesByScraping();
             return [
                 'issues' => $issues,
@@ -496,15 +593,31 @@ class RedmineService
                 'total_pages' => $this->issueTotalPages ?? 1,
             ];
         });
-        return array_merge($result, ['ticket_page' => $ticketPage, 'per_page' => $perPage]);
+        return array_merge($result, ['ticket_page' => $ticketPage, 'per_page' => $perPage, 'filter' => $filter]);
     }
 
-    protected function fetchIssuesAndActivitiesByApi(): array
+    protected function buildIssuesFilterParam(string $filter): string
+    {
+        $base = 'status_id=open';
+        return match ($filter) {
+            'author' => $base . '&author_id=me',
+            'qc_name' => config('redmine.filter_qc_cf_id', 0) > 0
+                ? $base . '&cf_' . config('redmine.filter_qc_cf_id') . '=me'
+                : $base . '&assigned_to_id=me',
+            'co_assignee' => config('redmine.filter_coassignee_cf_id', 0) > 0
+                ? $base . '&cf_' . config('redmine.filter_coassignee_cf_id') . '=me'
+                : $base . '&assigned_to_id=me',
+            default => $base . '&assigned_to_id=me',
+        };
+    }
+
+    protected function fetchIssuesAndActivitiesByApi(string $filter = 'assignee'): array
     {
         $timeout = config('redmine.timeout', 15);
         $headers = ['X-Redmine-API-Key' => $this->getApiKey()];
+        $issuesParam = $this->buildIssuesFilterParam($filter);
         $responses = Http::pool(fn ($pool) => [
-            $pool->as('issues')->timeout($timeout)->withHeaders($headers)->when(!$this->sslVerify, fn ($r) => $r->withoutVerifying())->get($this->redmineUrl . '/issues.json?assigned_to_id=me&status_id=open'),
+            $pool->as('issues')->timeout($timeout)->withHeaders($headers)->when(!$this->sslVerify, fn ($r) => $r->withoutVerifying())->get($this->redmineUrl . '/issues.json?' . $issuesParam),
             $pool->as('activities')->timeout($timeout)->withHeaders($headers)->when(!$this->sslVerify, fn ($r) => $r->withoutVerifying())->get($this->redmineUrl . '/enumerations/time_entry_activities.json'),
         ]);
 

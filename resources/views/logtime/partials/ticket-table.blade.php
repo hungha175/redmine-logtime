@@ -62,13 +62,13 @@
     <nav class="d-flex justify-content-end mb-2">
         <ul class="pagination pagination-sm mb-0">
             <li class="page-item {{ $ticketPage <= 1 ? ' disabled' : '' }}">
-                <a class="page-link" href="{{ $ticketPage <= 1 ? '#' : route('logtime.index', ['month' => $selectedMonth, 'p' => max(1, $ticketPage - 1)]) }}">«</a>
+                <a class="page-link" href="{{ $ticketPage <= 1 ? '#' : route('logtime.index', ['month' => $selectedMonth, 'filter' => $filter ?? 'assignee', 'p' => max(1, $ticketPage - 1)]) }}">«</a>
             </li>
             <li class="page-item active">
                 <span class="page-link">{{ $ticketPage }} / {{ $issueTotalPages }}</span>
             </li>
             <li class="page-item {{ $ticketPage >= $issueTotalPages ? ' disabled' : '' }}">
-                <a class="page-link" href="{{ $ticketPage >= $issueTotalPages ? '#' : route('logtime.index', ['month' => $selectedMonth, 'p' => $ticketPage + 1]) }}">»</a>
+                <a class="page-link" href="{{ $ticketPage >= $issueTotalPages ? '#' : route('logtime.index', ['month' => $selectedMonth, 'filter' => $filter ?? 'assignee', 'p' => $ticketPage + 1]) }}">»</a>
             </li>
         </ul>
     </nav>

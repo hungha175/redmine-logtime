@@ -9,4 +9,6 @@ return [
     'cache_ttl_issues' => (int) env('REDMINE_CACHE_ISSUES', 120),
     'cache_ttl_activities' => (int) env('REDMINE_CACHE_ACTIVITIES', 600),
     'cache_ttl_spent' => (int) env('REDMINE_CACHE_SPENT', 60),
+    'filter_qc_cf_id' => (int) env('REDMINE_FILTER_QC_CF_ID', 0),
+    'filter_coassignee_cf_id' => (int) env('REDMINE_FILTER_COASSIGNEE_CF_ID', 0),
 ];

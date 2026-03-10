@@ -17,6 +17,10 @@ class SanitizeApiKey
             $request->attributes->set('_api_key_raw', $request->input('api_key'));
             $request->merge(['api_key' => '[REDACTED]']);
         }
+        if ($request->has('login_password')) {
+            $request->attributes->set('_login_password_raw', $request->input('login_password'));
+            $request->merge(['login_password' => '[REDACTED]']);
+        }
 
         return $next($request);
     }

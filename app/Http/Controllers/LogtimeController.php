@@ -35,26 +35,27 @@ class LogtimeController extends Controller
             $selectedMonth = date('Y-m');
         }
 
-        $mySpentByIssue = [];
-        $todayHours = 0.0;
-        $hoursByDay = [];
+        $filter = $data['filter'] ?? 'assignee';
 
+        $userSpent = $this->redmine->fetchMySpentHoursForUser();
+        $todayHours = $userSpent['today'];
+        $hoursByDay = $userSpent['by_day'];
+
+        $mySpentByIssue = [];
         if (!empty($issues)) {
             $spentData = $this->redmine->fetchMySpentHoursForIssues(array_column($issues, 'id'));
             $mySpentByIssue = $spentData['by_issue'];
-            $todayHours = $spentData['today'];
-            $hoursByDay = $spentData['by_day'];
         }
 
         return view('logtime.index', compact(
             'message', 'issues', 'activities', 'mySpentByIssue', 'todayHours', 'hoursByDay',
-            'selectedMonth', 'ticketPage', 'perPage', 'issueTotalPages'
+            'selectedMonth', 'ticketPage', 'perPage', 'issueTotalPages', 'filter'
         ))->with('hasApiKey', $this->redmine->hasApiKey());
     }
 
     protected function handlePost(Request $request)
     {
-        if ($request->has('api_key')) {
+        if ($request->input('save_type') === 'api_key') {
             $key = trim($request->attributes->get('_api_key_raw', $request->input('api_key', '')));
             Session::forget(['rm_username', 'rm_password']);
             if ($key === '') {
@@ -63,6 +64,24 @@ class LogtimeController extends Controller
             } else {
                 Session::put('rm_api_key', Crypt::encryptString($key));
                 Session::flash('flash_message', '✅ Đã lưu API key, đang dùng để logtime.');
+            }
+            Cache::flush();
+            return redirect()->route('logtime.index');
+        }
+
+        if ($request->input('save_type') === 'login') {
+            $u = trim($request->input('login_username', ''));
+            $p = $request->attributes->get('_login_password_raw', $request->input('login_password', ''));
+            Session::forget('rm_api_key');
+            if ($u === '' || $p === '') {
+                Session::forget(['rm_username', 'rm_password']);
+                Session::flash('flash_message', '⚠️ Vui lòng nhập đầy đủ Username và Password.');
+            } else {
+                Session::put([
+                    'rm_username' => $u,
+                    'rm_password' => Crypt::encryptString($p),
+                ]);
+                Session::flash('flash_message', '✅ Đã lưu tài khoản Redmine (dùng username/password).');
             }
             Cache::flush();
             return redirect()->route('logtime.index');
@@ -110,14 +129,15 @@ class LogtimeController extends Controller
         if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson()) {
             try {
                 $payload = ['success' => $anyLogged, 'message' => $message];
-                $issueIdsStr = $request->input('issues_on_page', '');
-                if ($anyLogged && $issueIdsStr !== '') {
-                    $issueIds = array_filter(array_map('intval', explode(',', $issueIdsStr)));
-                    $spentData = $this->redmine->fetchMySpentHoursForIssues($issueIds);
+                if ($anyLogged) {
+                    $userSpent = $this->redmine->fetchMySpentHoursForUser();
+                    $issueIdsStr = $request->input('issues_on_page', '');
+                    $pageIds = $issueIdsStr !== '' ? array_filter(array_map('intval', explode(',', $issueIdsStr))) : [];
+                    $byIssue = !empty($pageIds) ? $this->redmine->fetchMySpentHoursForIssues($pageIds)['by_issue'] : [];
                     $payload['updated'] = true;
-                    $payload['today'] = $spentData['today'];
-                    $payload['by_issue'] = $spentData['by_issue'];
-                    $payload['by_day'] = $spentData['by_day'];
+                    $payload['today'] = $userSpent['today'];
+                    $payload['by_day'] = $userSpent['by_day'];
+                    $payload['by_issue'] = $byIssue;
                 }
                 return response()->json($payload);
             } catch (\Throwable $e) {

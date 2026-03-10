@@ -120,44 +120,156 @@
             position: absolute;
             top: 1rem;
             right: 1rem;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #2c3e50;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,.2);
-            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(44,62,80,.35);
+            font-size: 20px;
+            transition: transform .2s, box-shadow .2s;
         }
+        .login-fab:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(44,62,80,.4); }
         .login-fab span { line-height: 1; }
         .login-panel {
             position: absolute;
-            top: 3.5rem;
+            top: 3.75rem;
             right: 1rem;
-            width: 320px;
+            width: 360px;
             max-width: 90vw;
             background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,.15);
-            padding: 0.75rem 1rem;
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0,0,0,.12), 0 0 1px rgba(0,0,0,.08);
+            padding: 0;
             display: none;
             z-index: 10;
+            overflow: hidden;
         }
         .login-panel-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #fff;
+            padding: 1rem 1.25rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: .5rem;
         }
         .login-panel-header span {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            color: #868e96;
-            letter-spacing: .05em;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: .02em;
         }
+        .login-panel-header .close {
+            color: rgba(255,255,255,.8);
+            opacity: 1;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+        .login-panel-header .close:hover { color: #fff; }
+        .login-panel-body { padding: 1.25rem; }
+        .login-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .login-section:last-of-type { margin-bottom: 0; }
+        .login-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #64748b;
+            margin-bottom: .75rem;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+        .login-section-title::before {
+            content: '';
+            width: 4px;
+            height: 14px;
+            background: linear-gradient(180deg, #5c7cfa, #748ffc);
+            border-radius: 2px;
+        }
+        .login-section.login .login-section-title::before { background: linear-gradient(180deg, #51cf66, #69db7c); }
+        .login-panel .form-control {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+            padding: .5rem .75rem;
+        }
+        .login-panel .form-control:focus {
+            border-color: #5c7cfa;
+            box-shadow: 0 0 0 3px rgba(92,124,250,.15);
+        }
+        .login-panel .form-control::placeholder { color: #94a3b8; }
+        .login-panel small.text-muted {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: .35rem;
+            display: block;
+        }
+        .login-panel .btn-save-api {
+            background: linear-gradient(135deg, #5c7cfa 0%, #748ffc 100%);
+            color: #fff;
+            border: none;
+            padding: .45rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: opacity .2s;
+        }
+        .login-panel .btn-save-api:hover { opacity: .9; color: #fff; }
+        .login-panel .btn-save-login {
+            background: linear-gradient(135deg, #51cf66 0%, #69db7c 100%);
+            color: #fff;
+            border: none;
+            padding: .45rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: opacity .2s;
+        }
+        .login-panel .btn-save-login:hover { opacity: .9; color: #fff; }
+        .login-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 1rem 0;
+        }
+        .login-status {
+            margin-top: 1rem;
+            padding: .6rem .85rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+        .login-status.using-api {
+            background: #edf2ff;
+            color: #364fc7;
+        }
+        .login-status.using-login {
+            background: #ebfbee;
+            color: #2b8a3e;
+        }
+        .login-status.none {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .login-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .login-status.using-api .login-status-dot { background: #5c7cfa; }
+        .login-status.using-login .login-status-dot { background: #51cf66; }
+        .login-status.none .login-status-dot { background: #94a3b8; }
     </style>
 </head>
 <body class="p-4">
@@ -168,23 +280,53 @@
         <div class="login-fab" id="loginFab"><span>⚙</span></div>
         <div class="login-panel" id="loginPanel">
             <div class="login-panel-header">
-                <span>Redmine API Key</span>
-                <button type="button" class="close" style="font-size:16px;line-height:1;" onclick="toggleLoginPanel(false)">&times;</button>
+                <span>Redmine đăng nhập</span>
+                <button type="button" class="close" onclick="toggleLoginPanel(false)">&times;</button>
             </div>
             <form method="POST" action="{{ route('logtime.index') }}" autocomplete="off">
                 @csrf
-                <div class="form-group mb-2">
-                    <label for="api_key" class="text-secondary small">API Key</label>
-                    <input type="password" name="api_key" id="api_key" placeholder="Nhập API key từ Redmine"
-                           class="form-control form-control-sm" autocomplete="off">
-                    <small class="text-muted d-block">Lấy từ: My account → API access key. Để trống + Lưu = xóa.</small>
+                <div class="login-panel-body">
+                    <div class="login-section api">
+                        <div class="login-section-title">API Key</div>
+                        <div class="form-group mb-2">
+                            <input type="password" name="api_key" placeholder="My account → API access key"
+                                   class="form-control" autocomplete="off">
+                            <small class="text-muted">Ưu tiên dùng. Để trống nếu dùng username/password.</small>
+                        </div>
+                        <button type="submit" name="save_type" value="api_key" class="btn btn-save-api">Lưu API key</button>
+                    </div>
+
+                    <div class="login-divider"></div>
+
+                    <div class="login-section login">
+                        <div class="login-section-title">Username / Password</div>
+                        <div class="form-group mb-2">
+                            <input type="text" name="login_username" placeholder="Username"
+                                   value="{{ session('rm_username', '') }}" class="form-control mb-2">
+                            <input type="password" name="login_password" placeholder="Password"
+                                   class="form-control" autocomplete="off">
+                            <small class="text-muted">Dùng khi không có API key. Không mất khi app ngủ (Render).</small>
+                        </div>
+                        <button type="submit" name="save_type" value="login" class="btn btn-save-login">Lưu tài khoản</button>
+                    </div>
+
+                    @if($hasApiKey ?? false)
+                        <div class="login-status using-api">
+                            <span class="login-status-dot"></span>
+                            <span>Đang dùng: API key</span>
+                        </div>
+                    @elseif(session('rm_username'))
+                        <div class="login-status using-login">
+                            <span class="login-status-dot"></span>
+                            <span>Đang dùng: {{ session('rm_username') }}</span>
+                        </div>
+                    @else
+                        <div class="login-status none">
+                            <span class="login-status-dot"></span>
+                            <span>Chưa cấu hình. Chọn API key hoặc Username/Password.</span>
+                        </div>
+                    @endif
                 </div>
-                <button type="submit" class="btn btn-sm btn-primary">Lưu API key</button>
-                @if($hasApiKey ?? false)
-                    <div class="text-muted small mt-2">Đã cấu hình API key.</div>
-                @else
-                    <div class="text-muted small mt-2">Chưa cấu hình API key.</div>
-                @endif
             </form>
         </div>
 
@@ -192,25 +334,35 @@
 
         <div id="alertMessage" class="alert alert-success" style="display:{{ $message ? 'block' : 'none' }}">{{ $message }}</div>
 
-        <form method="GET" action="{{ route('logtime.index') }}" class="form-inline mb-3">
+        <form method="GET" action="{{ route('logtime.index') }}" class="form-inline mb-3 flex-wrap" id="monthForm">
             <label class="text-secondary small mr-2">Month</label>
             <input type="month" name="month" class="form-control form-control-sm mr-2"
-                   value="{{ $selectedMonth }}">
-            <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
+                   value="{{ $selectedMonth }}" onchange="this.form.submit()">
+            <input type="hidden" name="filter" value="{{ $filter ?? 'assignee' }}">
+            {{-- <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button> --}}
         </form>
 
         @include('logtime.partials.daily-bar')
 
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+            <form method="GET" action="{{ route('logtime.index') }}" class="form-inline mb-0" id="filterForm">
+                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+                <select name="filter" class="form-control form-control-sm" style="width: auto;" onchange="this.form.submit()">
+                    <option value="assignee" {{ ($filter ?? 'assignee') === 'assignee' ? 'selected' : '' }}>Assignee</option>
+                    <option value="author" {{ ($filter ?? '') === 'author' ? 'selected' : '' }}>Author</option>
+                    <option value="qc_name" {{ ($filter ?? '') === 'qc_name' ? 'selected' : '' }}>QC Name</option>
+                    <option value="co_assignee" {{ ($filter ?? '') === 'co_assignee' ? 'selected' : '' }}>Co-assignee</option>
+                </select>
+            </form>
+            <div class="text-right">
+                <span class="text-secondary small d-block">Today</span>
+                <strong id="todayHours" class="text-dark" style="font-size: 1.25rem;">{{ number_format($todayHours, 2) }}</strong> h
+            </div>
+        </div>
+
         <form method="POST" action="{{ route('logtime.index') }}" id="logtimeForm">
             @csrf
             <input type="hidden" name="issues_on_page" value="{{ implode(',', array_column($issues, 'id')) }}">
-            <div class="d-flex flex-wrap align-items-end justify-content-end mb-4">
-                <div class="text-right">
-                    <span class="text-secondary small d-block">Today</span>
-                    <strong id="todayHours" class="text-dark" style="font-size: 1.25rem;">{{ number_format($todayHours, 2) }}</strong> h
-                </div>
-            </div>
-
             @include('logtime.partials.ticket-table')
         </form>
     </div>
