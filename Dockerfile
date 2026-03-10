@@ -1,24 +1,24 @@
-FROM php:8.2-fpm
+FROM php:8.2-fpm-alpine
 
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     nginx \
     libzip-dev \
-    libsqlite3-dev \
     zip \
     unzip \
     curl \
     git \
+    sqlite-libs \
     && docker-php-ext-install pdo pdo_sqlite zip bcmath \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apk del libzip-dev
 
 WORKDIR /var/www/html
 
-COPY docker/nginx.conf /etc/nginx/sites-available/default
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
-COPY composer.json composer.lock* ./
+COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --optimize-autoloader
 
 COPY . .
