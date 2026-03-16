@@ -4,7 +4,7 @@
     $daysInMonth = (int)date('t', $tsStart);
     $todayStr = date('Y-m-d');
 @endphp
-<div class="daily-bar mb-4">
+<div class="daily-bar mb-2">
     @for($d = 1; $d <= $daysInMonth; $d++)
         @php
             $date = sprintf('%s-%02d', $selectedMonth, $d);
@@ -27,4 +27,9 @@
             <strong>{{ $hrs > 0 ? number_format($hrs, 1) : '0.0' }}h</strong>
         </div>
     @endfor
+</div>
+<div class="daily-bar-legend mb-3 text-muted small">
+    <span class="mr-2"><span class="legend-dot legend-ok"></span> ≥ 7h</span>
+    <span class="mr-2"><span class="legend-dot legend-low"></span> &lt; 7h</span>
+    <span><span class="legend-dot legend-weekend"></span> Weekend</span>
 </div>

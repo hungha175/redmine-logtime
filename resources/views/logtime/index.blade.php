@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Redmine Auto Logtime</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -61,9 +62,10 @@
             color: #495057;
         }
         .ticket-list-scroll .form-control {
-            font-size: 0.875rem;
-            padding: .4rem .6rem;
+            font-size: 0.9rem;
+            padding: .5rem .7rem;
             border-radius: 6px;
+            min-height: 38px;
         }
         .ticket-list-scroll .form-control:focus {
             border-color: #5c7cfa;
@@ -71,7 +73,7 @@
         }
         .ticket-list-scroll textarea.form-control {
             resize: vertical;
-            min-height: 52px;
+            min-height: 70px;
         }
         .btn-save { padding: .5rem 1.5rem; font-weight: 600; border-radius: 8px; background: #2c3e50; border: none; }
         .btn-save:hover { background: #1a252f; color: #fff; }
@@ -116,6 +118,22 @@
             background: #f1f3f5;
             border-style: dashed;
         }
+        .daily-bar-legend {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+        .legend-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .legend-ok { background: #51cf66; }
+        .legend-low { background: #fa5252; }
+        .legend-weekend { background: #adb5bd; }
         .login-fab {
             position: absolute;
             top: 1rem;
@@ -270,6 +288,110 @@
         .login-status.using-api .login-status-dot { background: #5c7cfa; }
         .login-status.using-login .login-status-dot { background: #51cf66; }
         .login-status.none .login-status-dot { background: #94a3b8; }
+
+        /* Mobile responsive tweaks */
+        @media (max-width: 576px) {
+            body.p-4 {
+                padding: 0.75rem !important;
+            }
+
+            .logtime-card {
+                padding: 1rem;
+                border-radius: 10px;
+            }
+
+            .container-fluid {
+                padding: 0;
+            }
+
+            .daily-bar {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                flex-wrap: nowrap;
+            }
+
+            .daily-bar::-webkit-scrollbar {
+                height: 3px;
+            }
+
+            .day-pill {
+                min-width: 64px;
+                padding: .3rem .35rem;
+                font-size: 0.7rem;
+            }
+
+            .day-pill strong {
+                font-size: 0.85rem;
+            }
+
+            .daily-bar-legend {
+                font-size: 0.7rem;
+            }
+
+            .login-fab {
+                top: 0.75rem;
+                right: 0.75rem;
+                width: 40px;
+                height: 40px;
+            }
+
+            .login-panel {
+                right: 0;
+                left: 0;
+                margin: 0 0.5rem;
+                width: auto;
+                max-width: none;
+            }
+
+            #monthForm,
+            #filterForm {
+                width: 100%;
+            }
+
+            #monthForm .form-control,
+            #filterForm .form-control {
+                width: 100% !important;
+                max-width: 100%;
+            }
+
+            #monthForm label {
+                margin-bottom: 0.25rem;
+                display: block;
+            }
+
+            .ticket-list-scroll {
+                max-height: none;
+            }
+
+            .ticket-list-scroll thead th,
+            .ticket-list-scroll tbody td {
+                padding: 0.45rem 0.5rem;
+                font-size: 0.8rem;
+            }
+
+            .ticket-list-scroll .form-control {
+                font-size: 0.9rem;
+                padding: 0.45rem 0.6rem;
+                min-height: 42px;
+            }
+
+            .ticket-list-scroll textarea.form-control {
+                min-height: 110px;
+            }
+
+            /* Comment column: make it take most of the width on mobile */
+            .ticket-list-scroll tbody td:nth-child(9) {
+                min-width: 75vw;
+            }
+
+            .btn-save,
+            .btn-save-row,
+            .login-panel .btn-save-api,
+            .login-panel .btn-save-login {
+                padding: 0.45rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body class="p-4">
@@ -345,7 +467,7 @@
         @include('logtime.partials.daily-bar')
 
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
-            <form method="GET" action="{{ route('logtime.index') }}" class="form-inline mb-0" id="filterForm">
+            <form method="GET" action="{{ route('logtime.index') }}" class="form-inline mb-2 mb-sm-0" id="filterForm">
                 <input type="hidden" name="month" value="{{ $selectedMonth }}">
                 <select name="filter" class="form-control form-control-sm" style="width: auto;" onchange="this.form.submit()">
                     <option value="assignee" {{ ($filter ?? 'assignee') === 'assignee' ? 'selected' : '' }}>Assignee</option>
@@ -354,7 +476,7 @@
                     <option value="co_assignee" {{ ($filter ?? '') === 'co_assignee' ? 'selected' : '' }}>Co-assignee</option>
                 </select>
             </form>
-            <div class="text-right">
+            <div class="text-right mt-2 mt-sm-0">
                 <span class="text-secondary small d-block">Today</span>
                 <strong id="todayHours" class="text-dark" style="font-size: 1.25rem;">{{ number_format($todayHours, 2) }}</strong> h
             </div>

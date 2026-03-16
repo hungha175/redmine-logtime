@@ -3,13 +3,13 @@
         <thead>
             <tr>
                 <th>#</th>
-                <th>Tracker</th>
-                <th>Status</th>
+                <th class="d-none d-sm-table-cell">Tracker</th>
+                <th class="d-none d-sm-table-cell">Status</th>
                 <th>Subject</th>
-                <th>My Spent</th>
+                <th class="d-none d-sm-table-cell">My Spent</th>
                 <th>Date</th>
                 <th>Hours</th>
-                <th>Activity</th>
+                <th class="d-none d-sm-table-cell">Activity</th>
                 <th>Comment</th>
                 <th></th>
             </tr>
@@ -19,16 +19,16 @@
             @php $mySpent = $mySpentByIssue[$issue['id']] ?? 0; @endphp
             <tr>
                 <td><a target="_blank" href="{{ config('redmine.url') }}/issues/{{ $issue['id'] }}">#{{ $issue['id'] }}</a></td>
-                <td>
+                <td class="d-none d-sm-table-cell">
                     @if(!empty($issue['tracker']))
                         <span class="tracker-badge">{{ $issue['tracker'] }}</span>
                     @else
                         —
                     @endif
                 </td>
-                <td>{{ $issue['status'] ?? '' }}</td>
+                <td class="d-none d-sm-table-cell">{{ $issue['status'] ?? '' }}</td>
                 <td class="text-dark">{{ $issue['subject'] }}</td>
-                <td class="text-nowrap" data-issue-id="{{ $issue['id'] }}">{{ $mySpent > 0 ? number_format($mySpent, 2) . ' h' : '—' }}</td>
+                <td class="text-nowrap d-none d-sm-table-cell" data-issue-id="{{ $issue['id'] }}">{{ $mySpent > 0 ? number_format($mySpent, 2) . ' h' : '—' }}</td>
                 <td style="width: 135px;">
                     <input type="date" name="issues[{{ $issue['id'] }}][date]" class="form-control"
                            value="{{ old('issues.'.$issue['id'].'.date', date('Y-m-d')) }}">
@@ -37,14 +37,14 @@
                     <input type="number" step="0.1" min="0"
                            name="issues[{{ $issue['id'] }}][hours]" class="form-control" placeholder="0">
                 </td>
-                <td style="min-width: 140px;">
+                <td style="min-width: 140px;" class="d-none d-sm-table-cell">
                     <select name="issues[{{ $issue['id'] }}][activity]" class="form-control">
                         @foreach($activities as $activity)
                             <option value="{{ $activity['id'] }}">{{ $activity['name'] }}</option>
                         @endforeach
                     </select>
                 </td>
-                <td>
+                <td style="min-width: 260px;">
                     <textarea name="issues[{{ $issue['id'] }}][comment]"
                         class="form-control" placeholder="Note..." rows="2"></textarea>
                 </td>

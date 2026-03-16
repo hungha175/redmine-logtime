@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\RedmineCredential;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -24,6 +25,21 @@ class RedmineService
     protected function getApiKey(): string
     {
         $encrypted = Session::get('rm_api_key', '');
+        // Nếu session trống, thử nạp lại từ DB (server vừa khởi động / hết session)
+        if ($encrypted === '') {
+            $cred = RedmineCredential::query()->first();
+            if ($cred && $cred->api_key_encrypted && $cred->use_api) {
+                // Hydrate session từ DB
+                Session::put('rm_api_key', $cred->api_key_encrypted);
+                if ($cred->username) {
+                    Session::put('rm_username', $cred->username);
+                }
+                if ($cred->password_encrypted) {
+                    Session::put('rm_password', $cred->password_encrypted);
+                }
+                $encrypted = $cred->api_key_encrypted;
+            }
+        }
         if ($encrypted !== '') {
             try {
                 $decrypted = Crypt::decryptString($encrypted);
@@ -646,7 +662,14 @@ class RedmineService
     {
         $encrypted = session('rm_password', '');
         if ($encrypted === '') {
-            return '';
+            // Thử đọc lại từ DB nếu session trống
+            $cred = RedmineCredential::query()->first();
+            if ($cred && $cred->password_encrypted) {
+                $encrypted = $cred->password_encrypted;
+                session(['rm_password' => $encrypted]);
+            } else {
+                return '';
+            }
         }
         try {
             return Crypt::decryptString($encrypted);
