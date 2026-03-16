@@ -13,6 +13,7 @@ chown -R nginx:nginx storage bootstrap/cache 2>/dev/null || true
 export TMPDIR=/var/www/html/storage/framework/temp
 
 php artisan config:cache
+php artisan migrate --force
 php artisan route:cache
 php artisan view:cache 2>/dev/null || true
 
