@@ -56,79 +56,66 @@ class LogtimeController extends Controller
 
     protected function handlePost(Request $request)
     {
-        if ($request->input('save_type') === 'api_key') {
-            $key = trim($request->attributes->get('_api_key_raw', $request->input('api_key', '')));
+        if ($request->input('save_type') === 'credentials') {
+            $apiKey = trim($request->attributes->get('_api_key_raw', $request->input('api_key', '')));
             $username = trim($request->input('login_username', ''));
             $passwordRaw = $request->attributes->get('_login_password_raw', $request->input('login_password', ''));
 
-            Session::forget(['rm_username', 'rm_password']);
-            if ($key === '') {
-                Session::forget('rm_api_key');
-                // Clear API key in DB but keep other fields
-                $cred = RedmineCredential::query()->first();
-                if ($cred) {
-                    $cred->api_key_encrypted = null;
-                    $cred->use_api = false;
-                    $cred->save();
-                }
-                Session::flash('flash_message', 'Đã xóa API key.');
-            } else {
-                Session::put('rm_api_key', Crypt::encryptString($key));
-                 // Upsert DB record with API key (+ optional username/password)
-                $cred = RedmineCredential::query()->first() ?? new RedmineCredential();
-                $cred->api_key_encrypted = Crypt::encryptString($key);
-                if ($username !== '') {
-                    $cred->username = $username;
-                }
-                if ($passwordRaw !== '') {
-                    $cred->password_encrypted = Crypt::encryptString($passwordRaw);
-                }
+            // Nếu cả 3 đều trống: xoá thông tin trong session, giữ DB để sau này dùng lại
+            if ($apiKey === '' && $username === '' && $passwordRaw === '') {
+                Session::forget(['rm_username', 'rm_password', 'rm_api_key']);
+                Cache::flush();
+                Session::flash('flash_message', 'Đã xoá thông tin Redmine trong phiên hiện tại.');
+                return redirect()->route('logtime.index');
+            }
+
+            if ($apiKey !== '' && $username !== '' && $passwordRaw !== '') {
+                // Lưu đầy đủ API key + username/password vào session
+                Session::put('rm_api_key', Crypt::encryptString($apiKey));
+                Session::put('rm_username', $username);
+                Session::put('rm_password', Crypt::encryptString($passwordRaw));
+
+                // Upsert vào DB theo username để lần sau chỉ cần username/password vẫn có API key
+                $cred = RedmineCredential::query()->firstOrNew(['username' => $username]);
+                $cred->password_encrypted = Crypt::encryptString($passwordRaw);
+                $cred->api_key_encrypted = Crypt::encryptString($apiKey);
                 $cred->use_api = true;
                 $cred->save();
-                Session::flash('flash_message', '✅ Đã lưu API key, đang dùng để logtime.');
+
+                Cache::flush();
+                Session::flash('flash_message', '✅ Đã lưu API key và tài khoản. Lần sau chỉ cần đăng nhập bằng Username/Password.');
+                return redirect()->route('logtime.index');
             }
-            Cache::flush();
-            return redirect()->route('logtime.index');
+
+            // Nếu không có API key nhưng có đủ username/password:
+            if ($apiKey === '' && $username !== '' && $passwordRaw !== '') {
+                Session::forget('rm_api_key');
+                Session::put('rm_username', $username);
+                Session::put('rm_password', Crypt::encryptString($passwordRaw));
+
+                // Nếu DB đã có API key cho username này thì nạp lại vào session để tiếp tục dùng API
+                $cred = RedmineCredential::query()->where('username', $username)->first();
+                if ($cred && $cred->api_key_encrypted && $cred->use_api) {
+                    Session::put('rm_api_key', $cred->api_key_encrypted);
+                }
+
+                Cache::flush();
+                Session::flash('flash_message', '✅ Đã lưu tài khoản Redmine.');
+                return redirect()->route('logtime.index');
+            }
+
+            // Nếu nhập lệch (ví dụ chỉ username hoặc chỉ password) thì báo lỗi
+            if ($username === '' || $passwordRaw === '') {
+                Session::flash('flash_message', '⚠️ Vui lòng nhập đầy đủ Username, Password (và API key nếu muốn lưu vào DB).');
+                Cache::flush();
+                return redirect()->route('logtime.index');
+            }
         }
 
-        if ($request->input('save_type') === 'login') {
-            $u = trim($request->input('login_username', ''));
-            $p = $request->attributes->get('_login_password_raw', $request->input('login_password', ''));
-            $cred = RedmineCredential::query()->first();
-
-            if ($u === '' || $p === '') {
-                Session::forget(['rm_username', 'rm_password']);
-                // Clear username/password in DB, keep API key if any
-                if ($cred) {
-                    $cred->username = null;
-                    $cred->password_encrypted = null;
-                    $cred->save();
-                }
-                Session::flash('flash_message', '⚠️ Vui lòng nhập đầy đủ Username và Password.');
-            } else {
-                // Update session creds
-                Session::put([
-                    'rm_username' => $u,
-                    'rm_password' => Crypt::encryptString($p),
-                ]);
-                // Upsert DB creds, preserve API key if exists
-                if (!$cred) {
-                    $cred = new RedmineCredential();
-                }
-                $cred->username = $u;
-                $cred->password_encrypted = Crypt::encryptString($p);
-                // Nếu DB đã có api_key_encrypted thì tiếp tục ưu tiên dùng API
-                if ($cred->api_key_encrypted) {
-                    $cred->use_api = true;
-                    // đảm bảo session có rm_api_key nếu chưa có
-                    if (!Session::has('rm_api_key')) {
-                        Session::put('rm_api_key', $cred->api_key_encrypted);
-                    }
-                }
-                $cred->save();
-                Session::flash('flash_message', '✅ Đã lưu tài khoản Redmine.');
-            }
+        if ($request->input('save_type') === 'logout') {
+            Session::forget(['rm_username', 'rm_password', 'rm_api_key']);
             Cache::flush();
+            Session::flash('flash_message', 'Đã đăng xuất và xóa thông tin Redmine trong session.');
             return redirect()->route('logtime.index');
         }
 

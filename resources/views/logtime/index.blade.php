@@ -413,9 +413,8 @@
                         <div class="form-group mb-2">
                             <input type="password" name="api_key" placeholder="My account → API access key"
                                    class="form-control" autocomplete="off">
-                            <small class="text-muted">Ưu tiên dùng. Để trống nếu dùng username/password.</small>
+                            <small class="text-muted">Nếu nhập cùng Username/Password, API key sẽ được lưu vào DB.</small>
                         </div>
-                        <button type="submit" name="save_type" value="api_key" class="btn btn-save-api">Lưu API key</button>
                     </div>
 
                     <div class="login-divider"></div>
@@ -427,20 +426,26 @@
                                    value="{{ session('rm_username', '') }}" class="form-control mb-2">
                             <input type="password" name="login_password" placeholder="Password"
                                    class="form-control" autocomplete="off">
-                            <small class="text-muted">Dùng khi không có API key. Không mất khi app ngủ (Render).</small>
+                            <small class="text-muted">Lần đầu có thể nhập kèm API key để lưu vào DB. Lần sau chỉ cần Username/Password.</small>
                         </div>
-                        <button type="submit" name="save_type" value="login" class="btn btn-save-login">Lưu tài khoản</button>
+                        <button type="submit" name="save_type" value="credentials" class="btn btn-save-login">Lưu cấu hình</button>
                     </div>
 
                     @if($hasApiKey ?? false)
-                        <div class="login-status using-api">
-                            <span class="login-status-dot"></span>
-                            <span>Đang dùng: API key</span>
+                        <div class="login-status using-api d-flex justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <span class="login-status-dot"></span>
+                                <span>Đang dùng: API key</span>
+                            </div>
+                            <button type="submit" name="save_type" value="logout" class="btn btn-sm btn-outline-secondary">Logout</button>
                         </div>
                     @elseif(session('rm_username'))
-                        <div class="login-status using-login">
-                            <span class="login-status-dot"></span>
-                            <span>Đang dùng: {{ session('rm_username') }}</span>
+                        <div class="login-status using-login d-flex justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <span class="login-status-dot"></span>
+                                <span>Đang dùng: {{ session('rm_username') }}</span>
+                            </div>
+                            <button type="submit" name="save_type" value="logout" class="btn btn-sm btn-outline-secondary">Logout</button>
                         </div>
                     @else
                         <div class="login-status none">
